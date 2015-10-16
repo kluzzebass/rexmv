@@ -8,6 +8,8 @@ rexmv -m <match> -r <replacement> [-f] [items ...]
   
   -f               : actually rename the items, instead of just dry running.
 
+  -v               : show version.
+
 Examples:
 
   Make everything upper case:
