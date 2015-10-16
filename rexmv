@@ -1,0 +1,79 @@
+#!/usr/bin/perl -w
+
+#
+# rexmv - perl regexp file renamer
+#
+# Copyright (c) 2014 - Jan Fredrik Leversund <kluzz@radical.org>
+#
+#
+
+
+use strict 'vars';
+use Getopt::Std;
+use Data::Dumper;
+use File::Copy qw(mv);
+
+use constant USAGE => q{USAGE: rexmv -m <match> -r <replacement> [-f] [items ...]
+  -m <match>       : regexp matching pattern (may include grouping parentheses).
+  -r <replacement> : use $1, $2 and so on to reference grouping from the matching pattern.
+  -f               : actually rename the items, instead of just dry running.
+
+Examples:
+
+  Make everything upper case:
+
+    rexmv -m '(.*)' -r '\U$1' *
+
+  Change extension from .mp4 to .mpeg4:
+
+    rexmv -m '.mp4$' -r '.mpeg4' *
+
+  Change '1of8' to 'S01E01', '2of8' to 'S01E02' and so on (useful for renaming tv show episodes):
+
+    rexmv -m '(\d+)of8' -r 'S01E0$1' *
+
+};
+
+our(%opts, $match, $replacement, %ren, $collision);
+
+%opts = (
+	m => undef,
+	r => undef,
+	f => 0
+);
+
+getopt('mr', \%opts);
+
+die USAGE unless defined $opts{m} and defined $ARGV[0];
+
+$match = qr/$opts{m}/;
+$replacement = '"' . $opts{r} . '"';
+
+%ren = ();
+$collision = 0;
+
+# Name transformations
+foreach my $oldf (sort @ARGV)
+{
+	my $newf = $oldf =~ s/$match/$replacement/goeer;
+
+	$collision = 1 if exists $ren{$newf};
+
+	$ren{$newf} = $oldf if $newf ne $oldf;
+
+	print "$oldf -> $newf\n" unless $opts{f};
+}
+
+die "Naming collision detected!\n" if $collision;
+
+exit 0 unless $opts{f};
+
+%ren = reverse %ren;
+
+# Renaming
+foreach my $oldf (sort keys %ren)
+{
+	mv($oldf, $ren{$oldf}) or die "Unable to rename/move $oldf to $ren{$oldf}: $!\n";
+	print "Renamed $oldf to $ren{$oldf}\n";
+}
+
